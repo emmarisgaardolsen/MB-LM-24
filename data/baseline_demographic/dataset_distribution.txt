@@ -1,0 +1,4 @@
+Dataset         |    1 |    0 |    Rows
+Training set    | 0.50 | 0.50 |    3168
+Validation set  | 0.47 | 0.53 |     680
+Test set        | 0.49 | 0.51 |     680

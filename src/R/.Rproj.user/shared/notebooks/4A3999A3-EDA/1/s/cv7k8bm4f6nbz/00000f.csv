@@ -1,0 +1,3 @@
+"0","# transpose healthy_subset_df to get samples as rows and bacteria as columns"
+"0","healthy_subset_df_t <- t(healthy_subset_df)"
+"0","write.csv(healthy_subset_df_t, ""../data/healthy_subset_df_t.csv"", row.names = TRUE)"

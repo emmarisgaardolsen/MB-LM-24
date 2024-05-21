@@ -1,0 +1,7 @@
+"0","# print the sum of all rows a particular column of healthy_subset_df, should be 1 because it's relative abundance"
+"0","column <- 11"
+"0","print(sum(healthy_subset_df[,column]))"
+"1","[1]"
+"1"," 99.95392"
+"1","
+"

@@ -1,0 +1,5 @@
+"0",""
+"0","healthy_subset_df = assay(healthy_subset)"
+"0","# save healthy_subset_df as a csv file"
+"0","write.csv(healthy_subset_df, ""../data/healthy_subset_df.csv"", row.names = TRUE)"
+"0",""

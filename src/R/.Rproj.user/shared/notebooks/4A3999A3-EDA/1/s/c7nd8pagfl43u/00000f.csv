@@ -1,0 +1,6 @@
+"0","# count the number of row names containing the word ""Lactobacillus"" (case insensitive)"
+"0","sum(grepl(""Lactobacillus"", rownames(healthy_subset_df), ignore.case = TRUE))"
+"1","[1]"
+"1"," 83"
+"1","
+"

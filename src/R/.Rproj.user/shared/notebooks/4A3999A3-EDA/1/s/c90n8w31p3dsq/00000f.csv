@@ -1,0 +1,5 @@
+"0","healthy_subset <- "
+"0","  filter(sampleMetadata, study_condition == ""control"" & body_site == ""stool"" & disease == ""healthy"" & age >= 18) %>%"
+"0","  select(where(~!all(is.na(.x))))  %>%   # columns of all NA values are dropped"
+"0","  returnSamples(dataType = ""relative_abundance"", # relative abundance tables (so values in one sample sum to 1 (apx))"
+"0","                rownames = ""long"") # rownames are in long format"

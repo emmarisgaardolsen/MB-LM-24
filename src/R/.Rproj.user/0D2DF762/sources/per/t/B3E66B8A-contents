@@ -1,0 +1,171 @@
+---
+title: "Exploratory Data Analysis"
+author: "Emma Olsen"
+date: "2024-04-13"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+
+pacman::p_load(curatedMetagenomicData, 
+               tidyverse, 
+               knitr, 
+               rmdformats, 
+               coop)
+
+knitr::opts_chunk$set(echo = TRUE)
+# global options
+options(max.print="75")
+opts_chunk$set(fig.width=8, 
+               fig.height=5, 
+               fig.path='Figs/',
+               echo=TRUE, 
+               warning=FALSE, 
+               message=FALSE, 
+               cache=TRUE,
+               prompt=FALSE,
+               tidy=TRUE)
+
+opts_knit$set(width=75)
+```
+
+## Extract the data 
+```{r}
+healthy_subset <- 
+  filter(sampleMetadata, study_condition == "control" & body_site == "stool" & disease == "healthy" & age >= 18) %>%
+  select(where(~!all(is.na(.x))))  %>%   # columns of all NA values are dropped
+  returnSamples(dataType = "relative_abundance", # relative abundance tables (so values in one sample sum to 1 (apx))
+                rownames = "long") # rownames are in long format
+```
+
+Obs: running the above chunk provides details from the data. First of all, the output of the chunk signifies that the latest update of the data snapshot is on the date 2023-10-24. Each entry refers to a specific dataset from a study in the format `YYYY-MM-DD_studyname`. The data is stored in a `SummarizedExperiment` object, which is a Bioconductor class that stores data in a matrix-like format. The data is stored in the `assay` slot of the object. The `colData` slot contains metadata about the samples, and the `rowData` slot contains metadata about the features. 
+
+The output says, for certain studies: "dropping rows without rowTree matches", which means that the data is filtered to only include rows that are present in the rowTree. So this indicates the removal of specific microbial taxa from the analysis because they don't have the corresponding entries in the hierarchical structure called the "rowTree". So some rows from the original data is removed because they are not present in the rowtree. The rowtree is a phylogenetic tree that describes the relationships between the features in the data. It is defined by the `rowData` slot of the `SummarizedExperiment` object. So the listed rows in the output above are the rows that cannot be matched to the rowtree, and thus they are removed. Everything else is kept. 
+
+For instance, the line:
+
+`k__Bacteria|p__Actinobacteria|c__Coriobacteriia|o__Coriobacteriales|f__Coriobacteriaceae|g__Collinsella|s__Collinsella_stercoris`
+Represents a full taxonomic classification from kingdom (k__Bacteria) to species (s__Collinsella_stercoris). Each component of these lines represents a taxonomic level:
+
+`k__` - Kingdom
+`p__` - Phylum
+`c__` - Class
+`o__` - Order
+`f__` - Family
+`g__` - Genus
+`s__` - Species
+
+```{r make df and save as csv}
+
+healthy_subset_df = assay(healthy_subset)
+# save healthy_subset_df as a csv file
+write.csv(healthy_subset_df, "../data/healthy_subset_df.csv", row.names = TRUE)
+
+```
+
+```{r transpose and save as csv}
+# transpose healthy_subset_df to get samples as rows and bacteria as columns
+healthy_subset_df_t <- t(healthy_subset_df)
+write.csv(healthy_subset_df_t, "../data/healthy_subset_df_t.csv", row.names = TRUE)
+```
+
+```{r}
+# list the row names of the healthy_subset_df
+rownames(healthy_subset_df)
+```
+
+```{r}
+# print the numbers of rows in the matrix
+nrow(healthy_subset_df)
+```
+
+```{r}
+# print the sum of all rows a particular column of healthy_subset_df, should be 1 because it's relative abundance
+column <- 11
+print(sum(healthy_subset_df[,column]))
+```
+
+```{r}
+# print the number of both rows and columns in the matrix
+print(paste("The number of rows (microbial taxon) in the matrix is", nrow(healthy_subset_df)))
+print(paste("The number of columns (samples) in the matrix is:", ncol(healthy_subset_df)))
+```
+
+```{r}
+# print the 10 max values across all entries in healthy_subset_df 
+print(sort(healthy_subset_df, decreasing = TRUE)[1:10])
+```
+
+```{r}
+sparsity(healthy_subset_df, proportion = TRUE)
+```
+
+## Lactobacillus 
+```{r}
+# count the number of row names containing the word "Lactobacillus" (case insensitive)
+sum(grepl("Lactobacillus", rownames(healthy_subset_df), ignore.case = TRUE))
+```
+
+```{r}
+lacto_idx = grep("Lactobacillus", row.names(healthy_subset_df)) # find the indices into the matrix that is some kind of lactobacillus
+```
+
+So each column in the dataframe represents a sample. The rows represent the abundance of a specific microbial taxon in the sample. The row names are the taxonomic classifications of the microbial taxa. The column names are the sample IDs.
+
+The below chunk calculates the sum of the abundance of all Lactobacilli per sample. So it adds together the abundance values of all Lactobacilli in each sample. 
+
+```{r}
+# make a new dataframe with only the lactobacillus rows 
+lactobacillus_df = healthy_subset_df[lacto_idx,]
+```
+
+```{r}
+outcome = colSums(healthy_subset_df[lacto_idx,]) # summarize the abundance of all Lactobacilli pr. sample
+```
+
+```{r}
+outcome01 = outcome > 0.01 #arbitrarily define presence of lactobacillus as an abundance over 0.01%
+healthy_subset_df_noL = healthy_subset_df[-lacto_idx,] #Remove rows from the abundance data
+```
+
+```{r}
+outcome01
+```
+
+```{r}
+# check if healthy_subset_df_noL is a dataframe
+is.data.frame(healthy_subset_df_noL)
+
+# make healthy_subset_df_noL a dataframe 
+healthy_subset_df_noL <- as.data.frame(healthy_subset_df_noL)
+
+# check again if healthy_subset_df_noL is a dataframe
+is.data.frame(healthy_subset_df_noL)
+```
+
+```{r}
+library(glmnet)
+ 
+cross = cv.glmnet(x = t(healthy_subset_df_noL), # transpose to get samples as rows, bacteria as cols 
+                  y = outcome01, # predict outcome01 which is lactobacillus presence, binary 0 or 1 
+                  type.measure = "auc",
+                  family = "binomial" ) # because outcome is 0/1 
+
+plot(cross) # plot cross-validated results, shows the AUC for each value of lambda tested during the cross-validation. It helps in visualizing which lambda value the model performs best at
+
+```
+
+## Bifidobacteria
+```{r}
+sum(grepl("bifidobacteria", rownames(healthy_subset_df), ignore.case = TRUE))
+bifido_idx <- grep("Bifidobacteria", row.names(healthy_subset_df))
+bifido_df <- healthy_subset_df[bifido_idx,]
+```
+
+```{r}
+sparsity(lactobacillus_df, proportion = TRUE) # 98.746 of vals in matrix are 0
+```
+  
+
+

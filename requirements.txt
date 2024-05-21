@@ -1,0 +1,14 @@
+matplotlib 
+numpy 
+pandas
+seaborn
+torch 
+transformers 
+accelerate
+jupyter
+ipykernel 
+scipy
+scikit-learn
+xgboost
+tensorflow 
+keras
